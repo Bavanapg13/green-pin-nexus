@@ -45,10 +45,13 @@ export default function Overview() {
   return (
     <div className="space-y-6 pb-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 font-[Inter]">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Privileged Access Command Center</h1>
-          <p className="text-slate-400">Continuous sequence, relationship, and behavioral privileged threat intelligence.</p>
+          <h1 className="text-3xl font-bold tracking-tight mb-1">GOOD EVENING, ANANYA</h1>
+          <h2 className="text-lg font-semibold text-primary uppercase tracking-widest font-mono mb-2">
+            PRIVILEGED SECURITY OVERVIEW
+          </h2>
+          <p className="text-slate-400">Monitoring privileged identities and investigating high-risk activity.</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -108,41 +111,64 @@ export default function Overview() {
       </Card>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="flex items-center gap-4 cursor-pointer hover:border-slate-700 transition-colors" onClick={() => navigate('/identity-risk')}>
-          <div className="p-3.5 bg-primary/10 text-primary rounded-xl border border-primary/20">
-            <Users size={22} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* PRIVILEGED OFFICERS MONITORED */}
+        <Card className="flex items-center gap-3.5 cursor-pointer hover:border-slate-700 transition-colors" onClick={() => navigate('/officers')}>
+          <div className="p-3 bg-primary/10 text-primary rounded-xl border border-primary/20 shrink-0">
+            <Users size={20} />
           </div>
           <div>
-            <p className="text-xs text-slate-400 font-medium">Monitored Identities</p>
-            <p className="text-2xl font-bold font-mono text-slate-100">{kpis.total_users || 100}</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Officers Monitored</p>
+            <p className="text-xl font-bold font-mono text-slate-100">248</p>
+            <span className="text-[9px] text-slate-500 font-mono italic">Simulated</span>
           </div>
         </Card>
-        <Card className="flex items-center gap-4 cursor-pointer hover:border-slate-700 transition-colors" onClick={() => navigate('/live-activity')}>
-          <div className="p-3.5 bg-info/10 text-info rounded-xl border border-info/20">
-            <Activity size={22} />
+
+        {/* HIGH-RISK IDENTITIES */}
+        <Card className="flex items-center gap-3.5 cursor-pointer hover:border-slate-700 transition-colors" onClick={() => navigate('/officers')}>
+          <div className="p-3 bg-warning/10 text-warning rounded-xl border border-warning/20 shrink-0">
+            <AlertTriangle size={20} />
           </div>
           <div>
-            <p className="text-xs text-slate-400 font-medium">Privileged Telemetry Events</p>
-            <p className="text-2xl font-bold font-mono text-slate-100">{(kpis.total_events || 5420).toLocaleString()}</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">High-Risk Identities</p>
+            <p className="text-xl font-bold font-mono text-amber-500">23</p>
+            <span className="text-[9px] text-slate-500 font-mono italic">Simulated</span>
           </div>
         </Card>
-        <Card className="flex items-center gap-4 cursor-pointer hover:border-slate-700 transition-colors" onClick={() => navigate('/response-center')}>
-          <div className="p-3.5 bg-warning/10 text-warning rounded-xl border border-warning/20">
-            <AlertTriangle size={22} />
+
+        {/* CRITICAL ALERTS */}
+        <Card className="flex items-center gap-3.5 cursor-pointer hover:border-slate-700 transition-colors" onClick={() => navigate('/alerts')}>
+          <div className="p-3 bg-danger/10 text-danger rounded-xl border border-danger/20 shrink-0">
+            <ShieldAlert size={20} />
           </div>
           <div>
-            <p className="text-xs text-slate-400 font-medium">Active High/Critical Alerts</p>
-            <p className="text-2xl font-bold font-mono text-amber-400">{kpis.active_alerts || 0}</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Critical Alerts</p>
+            <p className="text-xl font-bold font-mono text-red-500">7</p>
+            <span className="text-[9px] text-slate-500 font-mono italic">Simulated</span>
           </div>
         </Card>
-        <Card className="flex items-center gap-4 cursor-pointer hover:border-slate-700 transition-colors" onClick={() => navigate('/incident-history')}>
-          <div className="p-3.5 bg-danger/10 text-danger rounded-xl border border-danger/20">
-            <Shield size={22} />
+
+        {/* ACTIVE INVESTIGATIONS */}
+        <Card className="flex items-center gap-3.5 cursor-pointer hover:border-slate-700 transition-colors" onClick={() => navigate('/live-activity')}>
+          <div className="p-3 bg-info/10 text-info rounded-xl border border-info/20 shrink-0">
+            <Activity size={20} />
           </div>
           <div>
-            <p className="text-xs text-slate-400 font-medium">Simulated Containments</p>
-            <p className="text-2xl font-bold font-mono text-red-400">{kpis.actions_held || 0}</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active Investigations</p>
+            <p className="text-xl font-bold font-mono text-blue-400">12</p>
+            <span className="text-[9px] text-slate-500 font-mono italic">Simulated</span>
+          </div>
+        </Card>
+
+        {/* PENDING DECISIONS */}
+        <Card className="flex items-center gap-3.5 cursor-pointer hover:border-slate-700 transition-colors" onClick={() => navigate('/response-center')}>
+          <div className="p-3 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20 shrink-0">
+            <Shield size={20} />
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pending Decisions</p>
+            <p className="text-xl font-bold font-mono text-purple-400">5</p>
+            <span className="text-[9px] text-slate-500 font-mono italic">Simulated</span>
           </div>
         </Card>
       </div>

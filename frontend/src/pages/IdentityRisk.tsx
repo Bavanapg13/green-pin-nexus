@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Card from '../components/Card';
 import Badge from '../components/Badge';
 import { Search, UserCheck, ShieldAlert, Cpu, Sparkles } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function IdentityRisk() {
-  const [userId, setUserId] = useState('EMP-1042');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryUserId = searchParams.get('userId') || 'EMP-1042';
+
+  const [userId, setUserId] = useState(queryUserId);
   const [riskData, setRiskData] = useState<any>(null);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -14,6 +18,7 @@ export default function IdentityRisk() {
     if (!id.trim()) return;
     setLoading(true);
     setUserId(id);
+    setSearchParams({ userId: id });
     try {
       const data = await api.getRisk(id);
       setRiskData(data);
@@ -28,8 +33,8 @@ export default function IdentityRisk() {
     api.getUsers().then(users => {
       setUsersList(users || []);
     });
-    fetchRiskForUser('EMP-1042');
-  }, []);
+    fetchRiskForUser(queryUserId);
+  }, [queryUserId]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();

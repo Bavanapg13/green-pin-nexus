@@ -115,5 +115,59 @@ export const api = {
     });
     if (!res.ok) throw new Error(`Feedback error: ${res.statusText}`);
     return await res.json();
+  },
+  login: async (email_or_id: string, password: string) => {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email_or_id, password })
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: 'Authentication failed' }));
+      throw new Error(errorData.detail || 'Authentication failed');
+    }
+    return await res.json();
+  },
+  logout: async (supervisor_id: string) => {
+    const res = await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supervisor_id })
+    });
+    if (!res.ok) throw new Error('Logout failed');
+    return await res.json();
+  },
+  sessionExpire: async (supervisor_id: string) => {
+    const res = await fetch('/api/auth/session_expire', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supervisor_id })
+    });
+    if (!res.ok) throw new Error('Session expire failed');
+    return await res.json();
+  },
+  getAuditLogs: async () => {
+    try {
+      const res = await fetch('/api/audit');
+      if (!res.ok) throw new Error('Audit logs fetch failed');
+      return await res.json();
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  },
+  recordAudit: async (action: string, target?: string, details?: string) => {
+    try {
+      const res = await fetch('/api/audit/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, target, details })
+      });
+      if (!res.ok) throw new Error('Record audit failed');
+      return await res.json();
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
   }
 };

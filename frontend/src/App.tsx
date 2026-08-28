@@ -13,14 +13,23 @@ import ModelExplanation from './pages/ModelExplanation';
 import DemoCenter from './pages/DemoCenter';
 import SystemStatus from './pages/SystemStatus';
 
+import Login from './pages/Login';
+import ProtectedRoute from './components/ProtectedRoute';
+import PrivilegedOfficers from './pages/PrivilegedOfficers';
+import RiskAlerts from './pages/RiskAlerts';
+import AuditLog from './pages/AuditLog';
+
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
+      <Route path="/login" element={<Login />} />
+      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/overview" replace />} />
         <Route path="overview" element={<Overview />} />
+        <Route path="officers" element={<PrivilegedOfficers />} />
         <Route path="live-activity" element={<LiveActivity />} />
         <Route path="identity-risk" element={<IdentityRisk />} />
+        <Route path="alerts" element={<RiskAlerts />} />
         <Route path="attack-timeline" element={<AttackTimeline />} />
         <Route path="relationship-graph" element={<RelationshipGraph />} />
         <Route path="context-investigation" element={<ContextInvestigation />} />
@@ -30,6 +39,7 @@ function App() {
         <Route path="model-explanation" element={<ModelExplanation />} />
         <Route path="demo-center" element={<DemoCenter />} />
         <Route path="system-status" element={<SystemStatus />} />
+        <Route path="audit" element={<AuditLog />} />
       </Route>
     </Routes>
   );

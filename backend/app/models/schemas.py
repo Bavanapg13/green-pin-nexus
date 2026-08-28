@@ -133,3 +133,20 @@ class FeedbackRequest(BaseModel):
     verdict: Optional[str] = None
     risk_score: Optional[float] = 0.0
     analyst: Optional[str] = "SOC Analyst"
+
+class LoginRequest(BaseModel):
+    email_or_id: str
+    password: str
+
+class AuditLogEntry(BaseModel):
+    id: str
+    supervisor_id: str
+    action: str
+    target: Optional[str] = None
+    timestamp: str
+    details: Optional[str] = None
+
+class RecordAuditRequest(BaseModel):
+    action: str
+    target: Optional[str] = None
+    details: Optional[str] = None

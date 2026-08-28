@@ -16,16 +16,15 @@ def get_db():
     return conn
 
 def init_db():
-    # Only initialize if it doesn't exist
-    if os.path.exists(DB_PATH):
-        return
+    # Check if database file exists before any connection creates it
+    db_existed = os.path.exists(DB_PATH)
 
     conn = get_db()
     cursor = conn.cursor()
 
     # Create tables
     cursor.executescript("""
-        CREATE TABLE users (
+        CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
             name TEXT,
             role TEXT,
@@ -35,13 +34,13 @@ def init_db():
             working_hours TEXT
         );
 
-        CREATE TABLE roles (
+        CREATE TABLE IF NOT EXISTS roles (
             id TEXT PRIMARY KEY,
             name TEXT,
             permissions TEXT
         );
 
-        CREATE TABLE accounts (
+        CREATE TABLE IF NOT EXISTS accounts (
             id TEXT PRIMARY KEY,
             user_id TEXT,
             balance REAL,
@@ -50,14 +49,14 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
 
-        CREATE TABLE beneficiaries (
+        CREATE TABLE IF NOT EXISTS beneficiaries (
             id TEXT PRIMARY KEY,
             name TEXT,
             type TEXT,
             bank_details TEXT
         );
 
-        CREATE TABLE transactions (
+        CREATE TABLE IF NOT EXISTS transactions (
             id TEXT PRIMARY KEY,
             account_id TEXT,
             beneficiary_id TEXT,
@@ -68,7 +67,7 @@ def init_db():
             FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries (id)
         );
 
-        CREATE TABLE approvals (
+        CREATE TABLE IF NOT EXISTS approvals (
             id TEXT PRIMARY KEY,
             transaction_id TEXT,
             approver_id TEXT,
@@ -78,7 +77,7 @@ def init_db():
             FOREIGN KEY (approver_id) REFERENCES users (id)
         );
 
-        CREATE TABLE tickets (
+        CREATE TABLE IF NOT EXISTS tickets (
             id TEXT PRIMARY KEY,
             user_id TEXT,
             issue TEXT,
@@ -87,7 +86,7 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
 
-        CREATE TABLE incidents (
+        CREATE TABLE IF NOT EXISTS incidents (
             id TEXT PRIMARY KEY,
             type TEXT,
             description TEXT,
@@ -95,7 +94,7 @@ def init_db():
             timestamp TEXT
         );
 
-        CREATE TABLE events (
+        CREATE TABLE IF NOT EXISTS events (
             id TEXT PRIMARY KEY,
             user_id TEXT,
             action TEXT,
@@ -106,7 +105,7 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
 
-        CREATE TABLE devices (
+        CREATE TABLE IF NOT EXISTS devices (
             id TEXT PRIMARY KEY,
             user_id TEXT,
             type TEXT,
@@ -114,7 +113,7 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
 
-        CREATE TABLE risk_scores (
+        CREATE TABLE IF NOT EXISTS risk_scores (
             user_id TEXT PRIMARY KEY,
             score REAL,
             category TEXT,
@@ -123,7 +122,7 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
 
-        CREATE TABLE responses (
+        CREATE TABLE IF NOT EXISTS responses (
             id TEXT PRIMARY KEY,
             event_id TEXT,
             action TEXT,
@@ -131,7 +130,7 @@ def init_db():
             FOREIGN KEY (event_id) REFERENCES events (id)
         );
 
-        CREATE TABLE analyst_feedback (
+        CREATE TABLE IF NOT EXISTS analyst_feedback (
             id TEXT PRIMARY KEY,
             event_id TEXT,
             user_id TEXT,
@@ -143,18 +142,55 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         );
 
-        CREATE TABLE demo_state (
+        CREATE TABLE IF NOT EXISTS demo_state (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             scenario TEXT,
             last_updated TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS supervisors (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE,
+            name TEXT,
+            role TEXT,
+            password_hash TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            email TEXT PRIMARY KEY,
+            attempts INTEGER DEFAULT 0,
+            last_attempt TEXT,
+            locked_until TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id TEXT PRIMARY KEY,
+            supervisor_id TEXT,
+            action TEXT,
+            target TEXT,
+            timestamp TEXT,
+            details TEXT
+        );
     """)
 
     conn.commit()
+
+    # Seed supervisor if supervisors table is empty
+    cursor.execute("SELECT COUNT(*) FROM supervisors")
+    if cursor.fetchone()[0] == 0:
+        import bcrypt
+        pw_hash = bcrypt.hashpw(b"Demo@2026", bcrypt.gensalt()).decode('utf-8')
+        cursor.execute("""
+            INSERT INTO supervisors (id, email, name, role, password_hash)
+            VALUES (?, ?, ?, ?, ?)
+        """, ("SUP-001", "supervisor@greenpinnexus.local", "Ananya Rao", "Security Supervisor", pw_hash))
+        conn.commit()
+
     conn.close()
 
-    # Generate synthetic data
-    generate_synthetic_data(DB_PATH)
+    # Generate synthetic data if the database didn't exist before
+    if not db_existed:
+        generate_synthetic_data(DB_PATH)
 
 def reset_db():
     if os.path.exists(DB_PATH):

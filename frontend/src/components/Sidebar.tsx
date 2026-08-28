@@ -1,35 +1,35 @@
 import { NavLink } from 'react-router-dom';
 import { 
-  Shield, Activity, UserX, Clock, GitCommit, 
-  FileSearch, ShieldAlert, PlayCircle, History, 
-  MessageSquare, Cpu, Server
+  Shield, Activity, Users, Clock, GitCommit, 
+  FileSearch, ShieldAlert, History, 
+  Cpu, Server, ShieldCheck, AlertTriangle
 } from 'lucide-react';
 
 const links = [
   { to: '/overview', icon: Shield, label: 'Overview' },
+  { to: '/officers', icon: Users, label: 'Privileged Officers' },
   { to: '/live-activity', icon: Activity, label: 'Live Activity' },
-  { to: '/identity-risk', icon: UserX, label: 'Identity Risk' },
+  { to: '/alerts', icon: AlertTriangle, label: 'Risk Alerts' },
   { to: '/attack-timeline', icon: Clock, label: 'Attack Timeline' },
   { to: '/relationship-graph', icon: GitCommit, label: 'Relationship Graph' },
   { to: '/context-investigation', icon: FileSearch, label: 'Context Investigation' },
   { to: '/response-center', icon: ShieldAlert, label: 'Response Center' },
   { to: '/incident-history', icon: History, label: 'Incident History' },
-  { to: '/analyst-feedback', icon: MessageSquare, label: 'Analyst Feedback' },
+  { to: '/audit', icon: ShieldCheck, label: 'Audit Log' },
   { to: '/model-explanation', icon: Cpu, label: 'Model Explanation' },
-  { to: '/demo-center', icon: PlayCircle, label: 'Demo Center' },
   { to: '/system-status', icon: Server, label: 'System Status' },
 ];
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 bg-panel border-r border-slate-800 flex flex-col h-screen sticky top-0">
+    <aside className="w-64 bg-panel border-r border-slate-800 flex flex-col h-screen sticky top-0 shrink-0">
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-800 flex items-center gap-3">
         <div className="w-9 h-9 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shadow-[0_0_12px_rgba(16,185,129,0.3)]">
           <Shield size={22} className="text-primary" />
         </div>
         <div>
-          <div className="font-bold tracking-wider text-slate-100 text-sm flex items-center gap-1.5">
+          <div className="font-bold tracking-wider text-slate-100 text-sm flex items-center gap-1.5 font-mono">
             <span>GREEN PIN NEXUS</span>
           </div>
           <div className="text-[10px] text-slate-400 font-mono tracking-tight uppercase">Privileged Intelligence</div>
@@ -66,7 +66,7 @@ export default function Sidebar() {
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
             ENV
           </span>
-          <span className="font-mono text-slate-300 font-semibold">SIMULATION</span>
+          <span className="font-mono text-slate-300 font-semibold text-[9px] uppercase tracking-wider">SIMULATION</span>
         </div>
       </div>
     </aside>

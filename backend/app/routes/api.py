@@ -1,13 +1,18 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from ..database import get_db
-from ..models.schemas import (DemoRequest, DashboardData, GraphData, ResponseAction, FeedbackRequest)
+from ..models.schemas import (
+    DemoRequest, DashboardData, GraphData, ResponseAction, FeedbackRequest,
+    LoginRequest, AuditLogEntry, RecordAuditRequest
+)
+from pydantic import BaseModel
 from ..services.demo_service import DemoService
 from ..detection.risk_engine import RiskEngine
 import sqlite3
 import json
 import uuid
-from datetime import datetime
+import bcrypt
+from datetime import datetime, timedelta
 
 router = APIRouter()
 demo_service = DemoService()
@@ -18,6 +23,53 @@ def db_conn():
         yield conn
     finally:
         conn.close()
+
+def insert_audit_log(conn: sqlite3.Connection, supervisor_id: str, action: str, target: str = None, details: str = None):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO audit_logs (id, supervisor_id, action, target, timestamp, details)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (str(uuid.uuid4()), supervisor_id, action, target, datetime.now().isoformat(), details))
+    conn.commit()
+
+def check_lockout(conn: sqlite3.Connection, email_or_id: str) -> tuple[bool, str]:
+    cursor = conn.cursor()
+    cursor.execute("SELECT attempts, locked_until FROM login_attempts WHERE email = ?", (email_or_id,))
+    row = cursor.fetchone()
+    if row:
+        attempts, locked_until = row['attempts'], row['locked_until']
+        if attempts >= 5 and locked_until:
+            try:
+                locked_until_dt = datetime.fromisoformat(locked_until)
+                if datetime.now() < locked_until_dt:
+                    return True, "Too many failed authentication attempts. Please try again shortly."
+                else:
+                    cursor.execute("UPDATE login_attempts SET attempts = 0, locked_until = NULL WHERE email = ?", (email_or_id,))
+                    conn.commit()
+            except Exception:
+                pass
+    return False, ""
+
+def record_failed_attempt(conn: sqlite3.Connection, email_or_id: str):
+    cursor = conn.cursor()
+    cursor.execute("SELECT attempts FROM login_attempts WHERE email = ?", (email_or_id,))
+    row = cursor.fetchone()
+    if row:
+        attempts = row['attempts'] + 1
+        locked_until = None
+        if attempts >= 5:
+            locked_until = (datetime.now() + timedelta(seconds=30)).isoformat()
+        cursor.execute("UPDATE login_attempts SET attempts = ?, last_attempt = ?, locked_until = ? WHERE email = ?",
+                       (attempts, datetime.now().isoformat(), locked_until, email_or_id))
+    else:
+        cursor.execute("INSERT INTO login_attempts (email, attempts, last_attempt, locked_until) VALUES (?, 1, ?, NULL)",
+                       (email_or_id, datetime.now().isoformat()))
+    conn.commit()
+
+def reset_attempts(conn: sqlite3.Connection, email_or_id: str):
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM login_attempts WHERE email = ?", (email_or_id,))
+    conn.commit()
 
 @router.get("/health")
 def get_health():
@@ -196,6 +248,7 @@ def get_user(user_id: str, conn: sqlite3.Connection = Depends(db_conn)):
 
 @router.get("/risk/{user_id}")
 def get_risk(user_id: str, conn: sqlite3.Connection = Depends(db_conn)):
+    insert_audit_log(conn, "SUP-001", "ALERT_VIEWED", user_id, f"Viewed risk profile for user {user_id}")
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM risk_scores WHERE user_id = ?", (user_id,))
     row = cursor.fetchone()
@@ -435,6 +488,7 @@ def get_graph(scenario: str, conn: sqlite3.Connection = Depends(db_conn)):
 
 @router.get("/context/{event_id}")
 def get_context(event_id: str, conn: sqlite3.Connection = Depends(db_conn)):
+    insert_audit_log(conn, "SUP-001", "INVESTIGATION_OPENED", event_id, f"Investigated details for event {event_id}")
     cursor = conn.cursor()
     cursor.execute("""
         SELECT e.*, r.category as risk, r.score as risk_score, r.breakdown, r.explanations 
@@ -552,6 +606,10 @@ def post_response(req: ResponseAction, conn: sqlite3.Connection = Depends(db_con
     cursor.execute("INSERT INTO responses (id, event_id, action, timestamp) VALUES (?, ?, ?, ?)",
                    (str(uuid.uuid4()), event_id, req.action, datetime.now().isoformat()))
     conn.commit()
+    
+    # Audit log
+    insert_audit_log(conn, "SUP-001", "SIMULATED_RESPONSE", req.action, f"Executed response action for event {event_id}")
+    
     return {"status": "success", "action": req.action, "simulation": True, "timestamp": datetime.now().isoformat()}
 
 @router.post("/feedback")
@@ -565,9 +623,94 @@ def post_feedback(req: FeedbackRequest, conn: sqlite3.Connection = Depends(db_co
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (str(uuid.uuid4()), event_id, user_id, req.analyst or "SOC Analyst", verdict, "Analyst review recorded", datetime.now().isoformat()))
     conn.commit()
+    
+    # Audit log
+    insert_audit_log(conn, "SUP-001", "SUPERVISOR_DECISION", verdict, f"Verdict: {verdict} for user {user_id}")
+    
     return {
         "status": "success",
         "feedback": verdict,
         "message": "Feedback captured for future rule and baseline refinement.",
         "timestamp": datetime.now().isoformat()
     }
+
+class SessionActionRequest(BaseModel):
+    supervisor_id: str
+
+@router.post("/auth/login")
+def login(req: LoginRequest, conn: sqlite3.Connection = Depends(db_conn)):
+    is_locked, err_msg = check_lockout(conn, req.email_or_id)
+    if is_locked:
+        insert_audit_log(conn, "UNKNOWN", "LOGIN_FAILURE", req.email_or_id, "Lockout active")
+        raise HTTPException(status_code=403, detail=err_msg)
+
+    # Password policy check
+    pw = req.password
+    has_upper = any(c.isupper() for c in pw)
+    has_lower = any(c.islower() for c in pw)
+    has_digit = any(c.isdigit() for c in pw)
+    has_special = any(not c.isalnum() for c in pw)
+    if len(pw) < 8 or not (has_upper and has_lower and has_digit and has_special):
+        record_failed_attempt(conn, req.email_or_id)
+        insert_audit_log(conn, "UNKNOWN", "LOGIN_FAILURE", req.email_or_id, "Password policy violation")
+        raise HTTPException(
+            status_code=401,
+            detail="AUTHENTICATION FAILED: Invalid supervisor credentials. Please verify your login details."
+        )
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM supervisors WHERE id = ? OR email = ?", (req.email_or_id, req.email_or_id))
+    supervisor_row = cursor.fetchone()
+
+    if not supervisor_row:
+        record_failed_attempt(conn, req.email_or_id)
+        insert_audit_log(conn, "UNKNOWN", "LOGIN_FAILURE", req.email_or_id, "Supervisor not found")
+        raise HTTPException(
+            status_code=401,
+            detail="AUTHENTICATION FAILED: Invalid supervisor credentials. Please verify your login details."
+        )
+
+    sup = dict(supervisor_row)
+    pw_hash = sup['password_hash'].encode('utf-8')
+    if not bcrypt.checkpw(pw.encode('utf-8'), pw_hash):
+        record_failed_attempt(conn, req.email_or_id)
+        insert_audit_log(conn, sup['id'], "LOGIN_FAILURE", req.email_or_id, "Incorrect password")
+        raise HTTPException(
+            status_code=401,
+            detail="AUTHENTICATION FAILED: Invalid supervisor credentials. Please verify your login details."
+        )
+
+    # Success
+    reset_attempts(conn, req.email_or_id)
+    insert_audit_log(conn, sup['id'], "LOGIN_SUCCESS", sup['id'], "Authentication verified")
+    
+    return {
+        "status": "success",
+        "supervisor": {
+            "id": sup['id'],
+            "name": sup['name'],
+            "role": sup['role'],
+            "email": sup['email']
+        }
+    }
+
+@router.post("/auth/logout")
+def logout(req: SessionActionRequest, conn: sqlite3.Connection = Depends(db_conn)):
+    insert_audit_log(conn, req.supervisor_id, "LOGOUT", req.supervisor_id, "Supervisor logged out")
+    return {"status": "success"}
+
+@router.post("/auth/session_expire")
+def session_expire(req: SessionActionRequest, conn: sqlite3.Connection = Depends(db_conn)):
+    insert_audit_log(conn, req.supervisor_id, "SESSION_EXPIRED", req.supervisor_id, "Supervisor session expired due to inactivity")
+    return {"status": "success"}
+
+@router.get("/audit")
+def get_audit_logs(conn: sqlite3.Connection = Depends(db_conn)):
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100")
+    return [dict(row) for row in cursor.fetchall()]
+
+@router.post("/audit/record")
+def record_audit(req: RecordAuditRequest, conn: sqlite3.Connection = Depends(db_conn)):
+    insert_audit_log(conn, "SUP-001", req.action, req.target, req.details)
+    return {"status": "success"}
