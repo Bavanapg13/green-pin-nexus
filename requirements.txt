@@ -1,13 +1,6 @@
 fastapi
-uvicorn
-pandas
+pydantic
+bcrypt
+networkx
 numpy
 scikit-learn
-networkx
-python-dotenv
-pydantic
-aiofiles
-httpx
-pytest
-pytest-asyncio
-bcrypt
