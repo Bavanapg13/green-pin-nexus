@@ -3,9 +3,14 @@ import os
 from .data.generate_data import generate_synthetic_data
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "green_pin_nexus.db")
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    DB_PATH = "/tmp/green_pin_nexus.db"
+else:
+    DB_PATH = os.path.join(BASE_DIR, "green_pin_nexus.db")
 
 def get_db():
+    if not os.path.exists(DB_PATH):
+        init_db()
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
