@@ -2,5 +2,3 @@ fastapi
 pydantic
 bcrypt
 networkx
-numpy
-scikit-learn

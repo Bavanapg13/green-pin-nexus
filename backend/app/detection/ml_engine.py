@@ -1,11 +1,12 @@
+import math
+import random
+
 try:
     from sklearn.ensemble import IsolationForest
     import numpy as np
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
-import random
-import math
 
 class MLEngine:
     def __init__(self, db_conn):
@@ -33,8 +34,11 @@ class MLEngine:
             X = np.array([features])
             score = self.model.score_samples(X)[0]
             risk = max(0, min(100, -score * 100))
-            return risk
+            return float(risk)
         else:
-            # Mathematical distance based fallback
-            norm = sum(f ** 2 for f in features) ** 0.5
-            return min(100.0, norm * 20.0)
+            # Pure Python statistical anomaly calculation (zero binary dependency)
+            # Baseline mean = 0.0, std = 1.0 for normalized features
+            sq_diff = sum((float(f) - 0.25) ** 2 for f in features)
+            dist = math.sqrt(sq_diff)
+            risk = max(0.0, min(100.0, dist * 35.0))
+            return float(risk)
