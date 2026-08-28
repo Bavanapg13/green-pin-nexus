@@ -56,7 +56,7 @@ export default function Login() {
     setError(null);
 
     try {
-      const res = await api.login(emailOrId, password);
+      const res = await api.login(emailOrId.trim(), password.trim());
       setSuccess(true);
       
       // Store session

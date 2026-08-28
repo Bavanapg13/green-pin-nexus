@@ -658,8 +658,9 @@ def login(req: LoginRequest, conn: sqlite3.Connection = Depends(db_conn)):
             detail="AUTHENTICATION FAILED: Invalid supervisor credentials. Please verify your login details."
         )
 
+    clean_id = req.email_or_id.strip()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM supervisors WHERE id = ? OR email = ?", (req.email_or_id, req.email_or_id))
+    cursor.execute("SELECT * FROM supervisors WHERE LOWER(id) = LOWER(?) OR LOWER(email) = LOWER(?)", (clean_id, clean_id))
     supervisor_row = cursor.fetchone()
 
     if not supervisor_row:
