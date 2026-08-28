@@ -8,18 +8,21 @@ if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
 else:
     DB_PATH = os.path.join(BASE_DIR, "green_pin_nexus.db")
 
-def get_db():
-    if not os.path.exists(DB_PATH):
-        init_db()
+def _get_raw_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
+def get_db():
+    if not os.path.exists(DB_PATH):
+        init_db()
+    return _get_raw_connection()
+
 def init_db():
-    # Check if database file exists before any connection creates it
+    # Check if database file exists before connection creates it
     db_existed = os.path.exists(DB_PATH)
 
-    conn = get_db()
+    conn = _get_raw_connection()
     cursor = conn.cursor()
 
     # Create tables
